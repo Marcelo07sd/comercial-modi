@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from models import db, Cliente, Producto, Venta, DetalleVenta, Credito, Pago, ObservacionPago, ahora_peru
 from utils_pdf import generar_pdf_venta
