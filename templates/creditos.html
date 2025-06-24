@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Créditos Activos</h2>
+    <div class="row">
+        {% for credito in creditos %}
+        <div class="col-md-4">
+            <div class="card mb-3 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        Cliente: {{ credito.venta.cliente.nombre }} {{ credito.venta.cliente.apellido_paterno }}
+                    </h5>
+                    <p class="card-text">Saldo actual: S/ {{ credito.saldo_actual }}</p>
+                    <p class="card-text">
+                        Estado:
+                        <span class="badge bg-warning text-dark estado-credito" data-credito-id="{{ credito.credito_id }}">
+                            {{ credito.estado }}
+                        </span>
+                    </p>
+                    <button class="btn btn-primary btn-sm ver-detalle-btn" data-credito-id="{{ credito.credito_id }}">
+                        <i class="bi bi-eye"></i> Ver detalle
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal para detalle de crédito -->
+<div class="modal fade" id="modalDetalleCredito" tabindex="-1" aria-labelledby="modalDetalleCreditoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalDetalleCreditoLabel">Detalle del Crédito</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detalleCreditoContenido">
+                    <!-- Detalles cargados por JavaScript -->
+                </div>
+                <hr>
+                <h6>Agregar nuevo pago</h6>
+                <form id="formPago">
+                    <input type="hidden" id="credito_id_actual">
+                    <div class="mb-2">
+                        <label>Monto del pago</label>
+                        <input type="number" class="form-control" id="monto_pago" min="0" step="0.01" required>
+                    </div>
+                    <div class="mb-2">
+                        <label>Observaciones (una por línea)</label>
+                        <textarea class="form-control" id="observaciones_pago" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-sm">Guardar pago</button>
+                </form>
+                <div id="mensajePago" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalleCredito'));
+    const detalleCreditoContenido = document.getElementById('detalleCreditoContenido');
+    const formPago = document.getElementById('formPago');
+    const mensajePago = document.getElementById('mensajePago');
+
+    document.querySelectorAll('.ver-detalle-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const creditoId = this.getAttribute('data-credito-id');
+            verDetalleCredito(creditoId);
+        });
+    });
+
+    function verDetalleCredito(credito_id) {
+        document.getElementById('credito_id_actual').value = credito_id;
+
+        fetch(`/detalle_credito/${credito_id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.exito) {
+                    alert(data.mensaje);
+                    return;
+                }
+
+                let html = `
+                    <h5>Cliente: ${data.cliente}</h5>
+                    <p><strong>Dirección:</strong> ${data.direccion}</p>
+                    <p><strong>Teléfono:</strong> ${data.telefono}</p>
+                    <h6 class="mt-3">Productos:</h6>
+                    <ul>`;
+                data.productos.forEach(p => {
+                    html += `<li>${p.nombre} - ${p.cantidad} x S/ ${p.precio_unitario.toFixed(2)}</li>`;
+                });
+                html += `</ul>
+                    <h6 class="mt-3">Pagos:</h6>
+                    <ul class="list-group">`;
+
+                data.pagos.forEach(p => {
+                    html += `<li class="list-group-item">
+                        <strong>Fecha:</strong> ${p.fecha} - <strong>Monto:</strong> S/ ${p.monto.toFixed(2)}
+                        <ul class="mt-2">`;
+                    if (p.observaciones && p.observaciones.length > 0) {
+                        p.observaciones.forEach(o => {
+                            html += `<li><em>${o.fecha}</em>: ${o.texto}</li>`;
+                        });
+                    } else {
+                        html += `<li><em>Sin observaciones</em></li>`;
+                    }
+                    html += `</ul></li>`;
+                });
+
+                html += `</ul>
+                    <p class="mt-3"><strong>Saldo actual:</strong> S/ ${data.saldo_actual.toFixed(2)}</p>`;
+
+                detalleCreditoContenido.innerHTML = html;
+                mensajePago.innerHTML = '';
+                formPago.reset();
+
+                // 👇 Si crédito pagado, ocultar formulario y actualizar estado
+                if (data.saldo_actual <= 0) {
+                    formPago.style.display = 'none';
+                    mensajePago.innerHTML = `<div class="alert alert-info">Este crédito ha sido completamente pagado.</div>`;
+
+                    // Actualiza el badge dentro del modal
+                    const badgeEstado = document.querySelector("#modalDetalleCredito .badge");
+                    if (badgeEstado) {
+                        badgeEstado.classList.remove("bg-warning", "text-dark");
+                        badgeEstado.classList.add("bg-success");
+                        badgeEstado.innerText = "Pagado";
+                    }
+
+                    // También actualiza el badge de la tarjeta principal
+                    const badgePrincipal = document.querySelector(`.estado-credito[data-credito-id="${credito_id}"]`);
+                    if (badgePrincipal) {
+                        badgePrincipal.classList.remove("bg-warning", "text-dark");
+                        badgePrincipal.classList.add("bg-success");
+                        badgePrincipal.innerText = "Pagado";
+                    }
+                } else {
+                    formPago.style.display = 'block';
+                }
+
+                modal.show();
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error al cargar detalles del crédito.");
+            });
+    }
+
+    formPago.addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const credito_id = document.getElementById('credito_id_actual').value;
+        const monto = parseFloat(document.getElementById('monto_pago').value);
+        const observacionesTexto = document.getElementById('observaciones_pago').value.trim();
+
+        if (!monto || monto <= 0) {
+            mensajePago.innerHTML = `<div class="alert alert-warning">Ingrese un monto válido.</div>`;
+            return;
+        }
+
+        const observaciones = observacionesTexto
+            ? observacionesTexto.split('\n').map(o => o.trim()).filter(o => o !== "")
+            : [];
+
+        fetch(`/agregar_pago/${credito_id}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ monto: monto, observaciones: observaciones })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.exito) {
+                mensajePago.innerHTML = `<div class="alert alert-success">Pago registrado correctamente. Nuevo saldo: S/ ${data.saldo_actual.toFixed(2)}</div>`;
+                verDetalleCredito(credito_id); // Recarga el contenido actualizado del modal
+            } else {
+                mensajePago.innerHTML = `<div class="alert alert-danger">${data.mensaje}</div>`;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            mensajePago.innerHTML = `<div class="alert alert-danger">Error al registrar el pago.</div>`;
+        });
+    });
+});
+</script>
+{% endblock %}

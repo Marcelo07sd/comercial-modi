@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Historial de Créditos Cancelados</h2>
+    <div class="row">
+        {% for credito in creditos %}
+        <div class="col-md-4">
+            <div class="card mb-3 shadow border-success">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        {{ credito.venta.cliente.nombre }} {{ credito.venta.cliente.apellido_paterno }}
+                    </h5>
+                    <p class="card-text">Saldo final: S/ {{ credito.saldo_actual }}</p>
+                    <p class="card-text">
+                        Estado: <span class="badge bg-success">Cancelado</span>
+                    </p>
+                    <button class="btn btn-outline-success btn-sm ver-detalle-btn" data-credito-id="{{ credito.credito_id }}">
+                        <i class="bi bi-clock-history"></i> Ver historial
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal de detalle -->
+<div class="modal fade" id="modalDetalleCredito" tabindex="-1" aria-labelledby="detalleLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detalleLabel">Historial del Crédito</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detalleCreditoContenido">
+                    <!-- JS rellenará este contenido -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalleCredito'));
+    const detalleContenido = document.getElementById('detalleCreditoContenido');
+
+    document.querySelectorAll('.ver-detalle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const creditoId = btn.getAttribute('data-credito-id');
+            fetch(`/detalle_credito/${creditoId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.exito) {
+                        alert("Error al obtener detalles.");
+                        return;
+                    }
+
+                    let html = `
+                        <h5>Cliente: ${data.cliente}</h5>
+                        <p><strong>Dirección:</strong> ${data.direccion}</p>
+                        <p><strong>Teléfono:</strong> ${data.telefono}</p>
+                        <hr>
+                        <h6>Productos:</h6>
+                        <ul>`;
+                    data.productos.forEach(p => {
+                        html += `<li>${p.nombre} - ${p.cantidad} x S/ ${p.precio_unitario.toFixed(2)}</li>`;
+                    });
+                    html += `</ul>
+                        <p class="mt-2"><strong>Monto total del crédito:</strong> S/ ${(data.saldo_inicial).toFixed(2)}</p>
+                        <hr><h6>Pagos realizados:</h6><ul class="list-group">`;
+
+                    let saldo = data.saldo_inicial;
+                    data.pagos.forEach(p => {
+                        saldo -= p.monto;
+
+                        html += `<li class="list-group-item">
+                            <strong>Fecha:</strong> ${p.fecha} - <strong>Monto:</strong> S/ ${p.monto.toFixed(2)}<br>
+                            <strong>Saldo restante después del pago:</strong> S/ ${saldo.toFixed(2)}
+                            <ul class="mt-2">`;
+                        if (p.observaciones && p.observaciones.length > 0) {
+                            p.observaciones.forEach(o => {
+                                html += `<li><em>${o.fecha}</em>: ${o.texto}</li>`;
+                            });
+                        } else {
+                            html += `<li><em>Sin observaciones</em></li>`;
+                        }
+                        html += `</ul></li>`;
+                    });
+
+                    html += `</ul><hr>
+                        <p><strong>Saldo final:</strong> S/ ${data.saldo_actual.toFixed(2)}</p>`;
+
+                    detalleContenido.innerHTML = html;
+                    modal.show();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Error al cargar detalles.");
+                });
+        });
+    });
+})
+</script>
+{% endblock %}
+

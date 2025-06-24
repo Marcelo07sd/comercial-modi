@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Clientes Registrados</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <a href="{{ url_for('registrar_cliente') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-person-plus-fill"></i> Registrar Nuevo Cliente
+    </a>
+</div>
+
+{% if clientes %}
+<div class="table-responsive">
+    <table class="table table-bordered table-hover align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Nombre completo</th>
+                <th>DNI</th>
+                <th>Dirección</th>
+                <th>Referencia</th>
+                <th>Teléfono</th>
+                <th>Tel. Alternativo</th>
+                <th>Email</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cliente in clientes %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ cliente.nombre }} {{ cliente.apellido_paterno }} {{ cliente.apellido_materno }}</td>
+                <td>{{ cliente.dni }}</td>
+                <td>{{ cliente.direccion or '-' }}</td>
+                <td>{{ cliente.referencia_direccion or '-' }}</td>
+                <td>{{ cliente.telefono_principal }}</td>
+                <td>{{ cliente.telefono_alternativo or '-' }}</td>
+                <td>{{ cliente.email or '-' }}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-2" data-bs-toggle="modal"
+                        data-bs-target="#modalEditarCliente"
+                        data-id="{{ cliente.cliente_id }}">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+
+                    <button class="btn btn-sm btn-danger" data-bs-toggle="modal"
+                        data-bs-target="#confirmarEliminacionModal"
+                        data-id="{{ cliente.cliente_id }}"
+                        data-nombre="{{ cliente.nombre }} {{ cliente.apellido_paterno }}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info text-center">
+    No hay clientes registrados aún.
+</div>
+{% endif %}
+
+<!-- Modal Eliminar -->
+<div class="modal fade" id="confirmarEliminacionModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" id="formEliminarCliente">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    ¿Estás seguro de que deseas eliminar al cliente <strong id="nombreCliente"></strong>? Esta acción no se puede deshacer.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Editar Cliente -->
+<div class="modal fade" id="modalEditarCliente" tabindex="-1" aria-labelledby="editarLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="formEditarCliente">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editarClienteId">
+                
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" id="editarNombre" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Apellido Paterno</label>
+                            <input type="text" id="editarApellidoPaterno" class="form-control" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Apellido Materno</label>
+                            <input type="text" id="editarApellidoMaterno" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">DNI</label>
+                            <input type="text" id="editarDni" class="form-control" required maxlength="8">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Dirección</label>
+                            <input type="text" id="editarDireccion" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Referencia</label>
+                            <input type="text" id="editarReferencia" class="form-control">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Teléfono Principal</label>
+                            <input type="text" id="editarTelefonoPrincipal" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Teléfono Alternativo</label>
+                            <input type="text" id="editarTelefonoAlternativo" class="form-control">
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">Correo</label>
+                            <input type="email" id="editarEmail" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Guardar Cambios</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Modal eliminar
+    const modalEliminar = document.getElementById('confirmarEliminacionModal');
+    const formEliminar = document.getElementById('formEliminarCliente');
+    const nombreSpan = document.getElementById('nombreCliente');
+
+    modalEliminar.addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        const clienteId = button.getAttribute('data-id');
+        const nombre = button.getAttribute('data-nombre');
+        formEliminar.action = `/eliminar-cliente/${clienteId}`;
+        nombreSpan.textContent = nombre;
+    });
+
+    // Modal editar
+    const modalEditar = document.getElementById('modalEditarCliente');
+    const formEditar = document.getElementById('formEditarCliente');
+
+    modalEditar.addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        const clienteId = button.getAttribute('data-id');
+
+        fetch(`/api/clientes/${clienteId}`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('editarClienteId').value = data.cliente_id;
+                document.getElementById('editarNombre').value = data.nombre;
+                document.getElementById('editarApellidoPaterno').value = data.apellido_paterno;
+                document.getElementById('editarApellidoMaterno').value = data.apellido_materno;
+                document.getElementById('editarDni').value = data.dni;
+                document.getElementById('editarDireccion').value = data.direccion || '';
+                document.getElementById('editarReferencia').value = data.referencia_direccion || '';
+                document.getElementById('editarTelefonoPrincipal').value = data.telefono_principal;
+                document.getElementById('editarTelefonoAlternativo').value = data.telefono_alternativo || '';
+                document.getElementById('editarEmail').value = data.email || '';
+            });
+    });
+
+    formEditar.addEventListener('submit', e => {
+        e.preventDefault();
+        const id = document.getElementById('editarClienteId').value;
+
+        const payload = {
+            nombre: document.getElementById('editarNombre').value,
+            apellido_paterno: document.getElementById('editarApellidoPaterno').value,
+            apellido_materno: document.getElementById('editarApellidoMaterno').value,
+            dni: document.getElementById('editarDni').value,
+            direccion: document.getElementById('editarDireccion').value,
+            referencia_direccion: document.getElementById('editarReferencia').value,
+            telefono_principal: document.getElementById('editarTelefonoPrincipal').value,
+            telefono_alternativo: document.getElementById('editarTelefonoAlternativo').value,
+            email: document.getElementById('editarEmail').value
+        };
+
+        fetch(`/api/clientes/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(resp => {
+            if (resp.error) {
+                alert(resp.error);
+            } else {
+                location.reload();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

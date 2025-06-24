@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h2 class="mb-4">Registrar Nueva Venta</h2>
+
+    <button class="btn btn-outline-primary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#formularioVenta">
+        <i class="bi bi-plus-circle"></i> Nueva Venta
+    </button>
+
+    <div class="collapse" id="formularioVenta">
+        <div class="card card-body mb-4">
+            <form method="POST" action="{{ url_for('ventas') }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="cliente_id" class="form-label">Cliente</label>
+                        <select class="form-select" name="cliente_id" id="cliente_id" required>
+                            <option value="" disabled selected>Seleccione un cliente</option>
+                            {% for cliente in clientes %}
+                                <option value="{{ cliente.cliente_id }}">{{ cliente.nombre }} {{ cliente.apellido_paterno }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="tipo_pago" class="form-label">Tipo de Pago</label>
+                        <select class="form-select" name="tipo_pago" id="tipo_pago" required onchange="toggleCredito()">
+                            <option value="Contado">Contado</option>
+                            <option value="Crédito">Crédito</option>
+                        </select>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+                <h5>Productos</h5>
+                <div id="productos-container">
+                    <!-- producto-item (se repite dinámicamente) -->
+                    <div class="row g-3 producto-item">
+                        <div class="col-md-4">
+                            <label class="form-label">Producto</label>
+                            <select class="form-select" name="producto_id" onchange="actualizarMaxCantidad(this)">
+                                {% for producto in productos %}
+                                    <option value="{{ producto.producto_id }}" data-precio="{{ producto.precio_unitario }}" data-stock="{{ producto.stock }}">
+                                        {{ producto.nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Cantidad</label>
+                            <input type="number" class="form-control" name="cantidad" value="0" min="0" max="{{ productos[0].stock }}" required>
+                        </div>
+                        <div class="col-md-2 d-flex flex-column justify-content-end">
+                            <label class="form-label mb-0">Precio Unitario</label>
+                            <span class="form-control-plaintext precio-unitario">S/ 0.00</span>
+                        </div>
+                        <div class="col-md-2 d-flex flex-column justify-content-end">
+                            <label class="form-label mb-0">Subtotal</label>
+                            <span class="form-control-plaintext subtotal">S/ 0.00</span>
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="button" class="btn btn-danger" onclick="eliminarProducto(this)">X</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="agregarProducto()">Agregar otro producto</button>
+                </div>
+
+                <div class="mt-4" id="credito-campos" style="display:none;">
+                    <h5>Datos de Crédito</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="frecuencia_pago" class="form-label">Frecuencia de Pago</label>
+                            <select class="form-select" name="frecuencia_pago">
+                                <option value="Semanal">Semanal</option>
+                                <option value="Quincenal">Quincenal</option>
+                                <option value="Mensual">Mensual</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="fecha_proxima_pago" class="form-label">Fecha del Próximo Pago</label>
+                            <input type="date" class="form-control" name="fecha_proxima_pago">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cronómetro -->
+                <div class="text-center mt-4">
+                    <p class="text-muted">Tiempo para completar venta: <strong id="cronometroVenta">0</strong> segundos</p>
+                    <input type="hidden" name="tiempo_venta" id="tiempo_venta" value="0">
+                </div>
+
+                <div class="mt-4 text-center">
+                    <h5>Total: <span id="total-general">S/ 0.00</span></h5>
+                    <button type="submit" class="btn btn-success mt-2" disabled title="Agregue al menos un producto para registrar la venta">
+                        <i class="bi bi-cash-coin"></i> Registrar Venta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <h3 class="mb-3">Historial de Ventas</h3>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Cliente</th>
+                    <th>Fecha</th>
+                    <th>Tipo de Pago</th>
+                    <th>Total (S/)</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for venta in ventas %}
+                <tr>
+                    <td>{{ venta.venta_id }}</td>
+                    <td>{{ venta.cliente.nombre }} {{ venta.cliente.apellido_paterno }}</td>
+                    <td>{{ venta.fecha_venta.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                    <td>{{ venta.tipo_pago }}</td>
+                    <td>{{ venta.total }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="verDetalleVenta({{ venta.venta_id }})">
+                            Ver Detalle
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal de detalle -->
+<div class="modal fade" id="detalleVentaModal" tabindex="-1" aria-labelledby="detalleVentaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="detalleVentaLabel">Detalle de Venta</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Cliente:</strong> <span id="modalCliente"></span></p>
+        <p><strong>Fecha:</strong> <span id="modalFecha"></span></p>
+        <p><strong>Tipo de Pago:</strong> <span id="modalPago"></span></p>
+        <table class="table table-bordered mt-3">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio Unitario (S/)</th>
+                    <th>Subtotal (S/)</th>
+                </tr>
+            </thead>
+            <tbody id="modalProductos"></tbody>
+        </table>
+        <h5 class="text-end">Total: <span id="modalTotal">S/ 0.00</span></h5>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleCredito() {
+    const tipo = document.getElementById('tipo_pago').value;
+    document.getElementById('credito-campos').style.display = tipo === 'Crédito' ? 'block' : 'none';
+}
+
+function agregarProducto() {
+    const container = document.getElementById('productos-container');
+    const original = container.querySelector('.producto-item');
+    const clon = original.cloneNode(true);
+
+    clon.querySelector('input[name="cantidad"]').value = 0;
+    clon.querySelector('.precio-unitario').innerText = 'S/ 0.00';
+    clon.querySelector('.subtotal').innerText = 'S/ 0.00';
+
+    const select = clon.querySelector('select[name="producto_id"]');
+    actualizarOpcionesDisponibles(select);
+
+    select.addEventListener('change', () => {
+        actualizarMaxCantidad(select);
+        actualizarOpcionesParaTodos();
+    });
+
+    container.appendChild(clon);
+    actualizarOpcionesParaTodos();
+    actualizarTotales();
+}
+
+function eliminarProducto(btn) {
+    const container = document.getElementById('productos-container');
+    if (container.children.length > 1) {
+        container.removeChild(btn.closest('.producto-item'));
+        actualizarOpcionesParaTodos();
+        actualizarTotales();
+    }
+}
+
+function actualizarMaxCantidad(selectElement) {
+    const selected = selectElement.selectedOptions[0];
+    const stock = parseInt(selected.dataset.stock);
+    const precio = parseFloat(selected.dataset.precio);
+    const productoItem = selectElement.closest('.producto-item');
+
+    const cantidadInput = productoItem.querySelector('input[name="cantidad"]');
+    cantidadInput.max = stock;
+
+    productoItem.querySelector('.precio-unitario').innerText = `S/ ${precio.toFixed(2)}`;
+    actualizarTotales();
+}
+
+function actualizarTotales() {
+    let total = 0;
+    document.querySelectorAll('.producto-item').forEach(item => {
+        const select = item.querySelector('select[name="producto_id"]');
+        const cantidad = parseInt(item.querySelector('input[name="cantidad"]').value) || 0;
+        const precio = parseFloat(select.selectedOptions[0].dataset.precio);
+
+        const subtotal = cantidad * precio;
+        item.querySelector('.subtotal').innerText = `S/ ${subtotal.toFixed(2)}`;
+        item.querySelector('.precio-unitario').innerText = `S/ ${precio.toFixed(2)}`;
+        total += subtotal;
+    });
+
+    document.getElementById('total-general').innerText = `S/ ${total.toFixed(2)}`;
+
+    const btnSubmit = document.querySelector('button[type="submit"]');
+    btnSubmit.disabled = total <= 0;
+    btnSubmit.title = total <= 0 ? 'Agregue al menos un producto para registrar la venta' : '';
+}
+
+function actualizarOpcionesParaTodos() {
+    const seleccionados = new Set();
+    document.querySelectorAll('select[name="producto_id"]').forEach(select => {
+        if (select.value) {
+            seleccionados.add(select.value);
+        }
+    });
+
+    document.querySelectorAll('select[name="producto_id"]').forEach(select => {
+        const currentValue = select.value;
+        select.querySelectorAll('option').forEach(option => {
+            option.hidden = seleccionados.has(option.value) && option.value !== currentValue;
+        });
+    });
+}
+
+function actualizarOpcionesDisponibles(select) {
+    const allSelects = document.querySelectorAll('select[name="producto_id"]');
+    const seleccionados = Array.from(allSelects).map(sel => sel.value);
+
+    const options = select.querySelectorAll('option');
+    options.forEach(option => {
+        option.hidden = seleccionados.includes(option.value) && option.value !== select.value;
+    });
+}
+
+document.getElementById('productos-container').addEventListener('input', actualizarTotales);
+document.getElementById('productos-container').addEventListener('change', () => {
+    actualizarTotales();
+    actualizarOpcionesParaTodos();
+});
+
+document.querySelector('form').addEventListener('submit', function (e) {
+    const total = parseFloat(document.getElementById('total-general').innerText.replace('S/', '').trim());
+    if (total <= 0) {
+        e.preventDefault();
+        alert("No se puede registrar una venta sin productos válidos.");
+    } else {
+        setTimeout(() => location.reload(), 2000);
+    }
+});
+
+function verDetalleVenta(id) {
+    fetch(`/detalle_venta/${id}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.exito) {
+            document.getElementById("modalCliente").textContent = data.cliente;
+            document.getElementById("modalFecha").textContent = data.fecha;
+            document.getElementById("modalPago").textContent = data.tipo_pago;
+            document.getElementById("modalTotal").textContent = `S/ ${data.total.toFixed(2)}`;
+
+            const tbody = document.getElementById("modalProductos");
+            tbody.innerHTML = "";
+
+            data.productos.forEach(p => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${p.nombre}</td>
+                    <td>${p.cantidad}</td>
+                    <td>S/ ${p.precio_unitario.toFixed(2)}</td>
+                    <td>S/ ${(p.cantidad * p.precio_unitario).toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const modal = new bootstrap.Modal(document.getElementById("detalleVentaModal"));
+            modal.show();
+        } else {
+            alert("No se pudo obtener el detalle de la venta.");
+        }
+    })
+    .catch(error => {
+        console.error("Error al obtener detalle:", error);
+        alert("Error al cargar los datos.");
+    });
+}
+
+let tiempoVenta = 0;
+let cronometroIntervalo;
+
+function iniciarCronometroVenta() {
+    tiempoVenta = 0;
+    document.getElementById('cronometroVenta').textContent = '0';
+    document.getElementById('tiempo_venta').value = 0;
+    cronometroIntervalo = setInterval(() => {
+        tiempoVenta++;
+        document.getElementById('cronometroVenta').textContent = tiempoVenta;
+        document.getElementById('tiempo_venta').value = tiempoVenta;
+    }, 1000);
+}
+
+function detenerCronometroVenta() {
+    clearInterval(cronometroIntervalo);
+    tiempoVenta = 0;
+    document.getElementById('cronometroVenta').textContent = '0';
+    document.getElementById('tiempo_venta').value = 0;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const formularioVenta = document.getElementById('formularioVenta');
+    formularioVenta.addEventListener('shown.bs.collapse', iniciarCronometroVenta);
+    formularioVenta.addEventListener('hidden.bs.collapse', detenerCronometroVenta);
+});
+</script>
+{% endblock %}

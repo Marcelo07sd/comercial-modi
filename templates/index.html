@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center mb-4">
+    <h1 class="fw-bold">Panel Principal</h1>
+    <p class="text-muted">Gestión de clientes, productos y créditos</p>
+</div>
+
+<div class="row g-4 justify-content-center">
+
+    <div class="col-md-4">
+        <div class="card text-white bg-primary h-100 shadow rounded-4">
+            <div class="card-body text-center">
+                <i class="bi bi-person-plus-fill display-4"></i>
+                <h5 class="card-title mt-3">Agregar Cliente</h5>
+                <p class="card-text">Registro de nuevos clientes.</p>
+                <a href="/registrar-cliente" class="btn btn-light btn-sm">Registrar</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card text-white bg-secondary bg-gradient h-100 shadow rounded-4">
+            <div class="card-body text-center">
+                <i class="bi bi-people-fill display-4"></i>
+                <h5 class="card-title mt-3">Clientes Registrados</h5>
+                <p class="card-text">Consulta y seguimiento de clientes.</p>
+                <a href="/ver-clientes" class="btn btn-light btn-sm">Ver Clientes</a>
+            </div>
+        </div>
+    </div>
+    
+
+    <div class="col-md-4">
+        <div class="card text-white bg-success h-100 shadow rounded-4">
+            <div class="card-body text-center">
+                <i class="bi bi-box-seam display-4"></i>
+                <h5 class="card-title mt-3">Productos</h5>
+                <p class="card-text">Control de stock y nuevos productos.</p>
+                <a href="/productos" class="btn btn-light btn-sm">Ver Productos</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card text-white bg-warning h-100 shadow rounded-4">
+            <div class="card-body text-center">
+                <i class="bi bi-cash-coin display-4"></i>
+                <h5 class="card-title mt-3">Ventas</h5>
+                <p class="card-text">Registro de ventas al contado y crédito.</p>
+                <a href="/ventas" class="btn btn-light btn-sm">Registrar Venta</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card text-white bg-danger h-100 shadow rounded-4">
+            <div class="card-body text-center">
+                <i class="bi bi-journal-check display-4"></i>
+                <h5 class="card-title mt-3">Créditos</h5>
+                <p class="card-text">Estado de deudas y pagos de clientes.</p>
+                <a href="/creditos" class="btn btn-light btn-sm">Ver Créditos</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card text-white bg-dark h-100 shadow rounded-4">
+            <div class="card-body text-center">
+                <i class="bi bi-check-circle display-4"></i>
+                <h5 class="card-title mt-3">Créditos Cancelados</h5>
+                <p class="card-text">Listado de clientes que ya pagaron completamente.</p>
+                <a href="/creditos/cancelados" class="btn btn-light btn-sm">Ver Créditos</a>
+            </div>
+        </div>
+    </div>
+    
+</div>
+{% endblock %}
