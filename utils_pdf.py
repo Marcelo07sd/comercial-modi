@@ -10,7 +10,7 @@ def generar_pdf_venta(cliente, venta, detalles):
     pdf = canvas.Canvas(buffer, pagesize=letter)
     pdf.setTitle("Boleta de Venta")
 
-    pdf.drawString(50, 750, f"Comercial Alex 2025 - Boleta de Venta")
+    pdf.drawString(50, 750, f"Comercial Raul 2025 - Boleta de Venta")
     pdf.drawString(50, 735, f"Fecha y hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     pdf.drawString(50, 720, f"Cliente: {cliente.nombre} {cliente.apellido_paterno} {cliente.apellido_materno}")
     pdf.drawString(50, 705, f"DNI: {cliente.dni}")
